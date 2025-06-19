@@ -14,6 +14,7 @@ etuples==0.3.9
 filelock==3.17.0
 Flask==3.1.0
 fonttools==4.56.0
+gunicorn==21.2.0
 gitdb==4.0.12
 GitPython==3.1.44
 h5netcdf==1.5.0

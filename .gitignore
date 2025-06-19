@@ -2,3 +2,5 @@ __pycache__/
 deprecated/
 bayes-env/
 run_flask.sh
+.env
+*.log
