@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bayesian Framework A/B Testing</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .disclaimer {
+            background-color: #7594f5;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: white;
+        }
+        .sidebar {
+            float: left;
+            width: 300px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            margin-right: 20px;
+            margin-bottom: 20px;
+        }
+        .main-content {
+            margin-left: 340px;
+            min-height: 400px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="range"], input[type="number"], input[type="date"] {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 5px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .slider-value {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-style: italic;
+            color: #666;
+        }
+        .results {
+            margin-top: 20px;
+        }
+        .plot-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .plot-container img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .daily-plots {
+            margin: 20px 0;
+        }
+        .daily-plots h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+        .daily-plots-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .daily-plot-item {
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            text-align: center;
+        }
+        .daily-plot-item img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 5px;
+        }
+        .daily-plot-title {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .summary {
+            background-color: #e9ecef;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .clearfix::after {
+            content: "";
+            display: table;
+            clear: both;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                float: none;
+                width: auto;
+                margin-right: 0;
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Bayesian Framework A/B Testing</h1>
+            <h2>Sample Size Simulation for Conclusive Experiments</h2>
+        </div>
+
+        <div class="disclaimer">
+            <strong>Disclaimer:</strong> This simulation generates mock data for two variants (control and treatment) over 30 days where means' difference are around practical significance with some noise.
+            It simulates a worst-case scenario with daily updated priors to determine if a 
+            Bayesian MCMC Sampling in an A/B test can reach a conclusive result within the specified practical significance level.
+        </div>
+
+        <div class="disclaimer">
+            Each simulation will populate a single posterior distribution chart, and results will be populated at the bottom.
+        </div>
+
+        <div class="clearfix">
+            <div class="sidebar">
+                <form id="calculationForm">
+                    <div class="form-group">
+                        <label for="baseline_cr">Baseline Conversion Rate (%)</label>
+                        <input type="range" id="baseline_cr" min="1" max="99" step="0.1" value="10">
+                        <div class="slider-value" id="baseline_cr_value">10.0%</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="mde">Practical Significance (%)</label>
+                        <input type="range" id="mde" min="1" max="50" step="0.1" value="1">
+                        <div class="slider-value" id="mde_value">1.0%</div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="daily_traffic">Experiment Daily Traffic per Variant</label>
+                        <input type="number" id="daily_traffic" min="1" value="100">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="start_date">Experiment Start Date</label>
+                        <input type="date" id="start_date" value="">
+                    </div>
+
+                    <button type="submit" id="calculateBtn">Calculate</button>
+                </form>
+            </div>
+
+            <div class="main-content">
+                <div id="loading" class="loading" style="display: none;">
+                    <p>Simulations are running...</p>
+                    <p id="progress">Preparing simulation...</p>
+                </div>
+
+                <div id="results" class="results" style="display: none;">
+                    <div id="dailyPlots" class="daily-plots" style="margin-bottom: 30px;">
+                        <h3>Daily Posterior Difference Charts</h3>
+                        <div id="dailyPlotsContainer" class="daily-plots-container">
+                            <!-- Daily plots will be inserted here -->
+                        </div>
+                    </div>
+                    
+                    <div class="plot-container">
+                        <h3>Summary: ROPE Analysis Over Time</h3>
+                        <img id="plotImage" src="" alt="Simulation Results Plot">
+                    </div>
+                    <div class="summary">
+                        <p><strong>Average sample size to conclusive experiment:</strong> <span id="avgSampleSize"></span></p>
+                        <p><strong>Average number of days to conclusive experiment:</strong> <span id="avgNumDays"></span></p>
+                    </div>
+                </div>
+
+                <div id="error" class="error" style="display: none;"></div>
+                <div id="success" class="success" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set today's date as default
+        document.getElementById('start_date').value = new Date().toISOString().split('T')[0];
+
+        // Update slider values in real-time
+        document.getElementById('baseline_cr').addEventListener('input', function() {
+            document.getElementById('baseline_cr_value').textContent = parseFloat(this.value).toFixed(1) + '%';
+        });
+
+        document.getElementById('mde').addEventListener('input', function() {
+            document.getElementById('mde_value').textContent = parseFloat(this.value).toFixed(1) + '%';
+        });
+
+        // Handle form submission
+        document.getElementById('calculationForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            // Hide previous results and errors
+            document.getElementById('results').style.display = 'none';
+            document.getElementById('error').style.display = 'none';
+            document.getElementById('success').style.display = 'none';
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('calculateBtn').disabled = true;
+            document.getElementById('calculateBtn').textContent = 'Calculating...';
+            
+            // Collect form data
+            const formData = {
+                baseline_cr: parseFloat(document.getElementById('baseline_cr').value),
+                mde: parseFloat(document.getElementById('mde').value),
+                daily_traffic: parseInt(document.getElementById('daily_traffic').value),
+                start_date: document.getElementById('start_date').value
+            };
+            
+            // Make AJAX request
+            fetch('/calculate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('calculateBtn').disabled = false;
+                document.getElementById('calculateBtn').textContent = 'Calculate';
+                
+                if (data.success) {
+                    // Show daily plots
+                    const dailyPlotsContainer = document.getElementById('dailyPlotsContainer');
+                    dailyPlotsContainer.innerHTML = ''; // Clear previous results
+                    
+                    if (data.daily_plots && data.daily_plots.length > 0) {
+                        data.daily_plots.forEach(plotData => {
+                            const plotItem = document.createElement('div');
+                            plotItem.className = 'daily-plot-item';
+                            plotItem.innerHTML = `
+                                <div class="daily-plot-title">Simulation ${plotData.simulation} - Day ${plotData.day} (${plotData.date})</div>
+                                <img src="data:image/png;base64,${plotData.plot}" alt="Daily Posterior Difference">
+                            `;
+                            dailyPlotsContainer.appendChild(plotItem);
+                        });
+                    }
+                    
+                    // Show summary results
+                    document.getElementById('plotImage').src = 'data:image/png;base64,' + data.plot_data.plot_image;
+                    document.getElementById('avgSampleSize').textContent = data.plot_data.avg_sample_size;
+                    document.getElementById('avgNumDays').textContent = data.plot_data.avg_num_days;
+                    document.getElementById('results').style.display = 'block';
+                    
+                    // Show success message
+                    document.getElementById('success').textContent = data.message;
+                    document.getElementById('success').style.display = 'block';
+                } else {
+                    // Show error
+                    document.getElementById('error').textContent = 'Error: ' + data.error;
+                    document.getElementById('error').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('calculateBtn').disabled = false;
+                document.getElementById('calculateBtn').textContent = 'Calculate';
+                
+                // Show error
+                document.getElementById('error').textContent = 'Network error: ' + error.message;
+                document.getElementById('error').style.display = 'block';
+            });
+        });
+    </script>
+</body>
+</html>
