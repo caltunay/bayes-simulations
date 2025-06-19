@@ -110,7 +110,7 @@ def simulate_experiment(g, date_col='date', group_col='group', rope_bounds=(-0.0
             
             difference = pm.Deterministic('difference', p_treatment - p_control)
             
-            trace = pm.sample(1000, tune=250, return_inferencedata=True, progressbar=False, chains=2)
+            trace = pm.sample(500, tune=100, return_inferencedata=True, progressbar=False, chains=2)
     
         # extract posteriors
         summary = az.summary(trace, var_names=["p_control", "p_treatment", "difference"], hdi_prob=0.94)
